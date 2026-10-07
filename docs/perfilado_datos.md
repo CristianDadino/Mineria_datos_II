@@ -1,6 +1,4 @@
-# Perfilado inicial de datos
-
-> **Borrador:** los resultados deben regenerarse después de seleccionar una sola ubicación de CSV en el notebook. El ZIP contiene nombres repetidos en la raíz y en `datalake/landing/`; el código actual puede sobrescribir una versión con la otra.
+# Perfilado inicial
 
 ## 1. Objetivo y alcance
 
@@ -14,7 +12,7 @@ Se analizaron siete archivos, con **4.112 filas en total**. El chequeo de duplic
 
 | Archivo | Filas × columnas | Valores nulos encontrados | Observaciones |
 |---|---:|---|---|
-| `billing_monthly.csv` | 240 × 8 | `credits`: 137 | Hay 13 valores negativos en `subtotal` (2 ARS, 1 EUR y 10 USD). Pueden corresponder a ajustes o reversos; requieren validación de negocio. |
+| `billing_monthly.csv` | 240 × 8 | `credits`: 137 | Hay 13 valores negativos en `subtotal` (En currency: 2 ARS, 1 EUR y 10 USD). Pueden corresponder a ajustes o reversos; podría requerir una validación sobre si estos conceptos deberían aplicar aca. |
 | `customers_orgs.csv` | 80 × 11 | `nps_score`: 11 | `nps_score` tiene valores negativos y un máximo de 101. Confirmar si representa un NPS agregado u otra medida. |
 | `marketing_touches.csv` | 1.500 × 7 | Ninguno | No se observaron filas completamente duplicadas. |
 | `nps_surveys.csv` | 92 × 4 | `nps_score`: 19; `comment`: 10 | `nps_score` contiene valores negativos. Confirmar qué escala o indicador representa. |
@@ -26,9 +24,9 @@ Los campos numéricos revisados en los CSV (`nps_score`, `csat`, `subtotal`, `cr
 
 ### 2.1 Valores numéricos que requieren interpretación
 
-- En `customers_orgs.csv`, `nps_score` va de -38 a 101; se observaron 16 valores negativos y un valor por encima de 100.
-- En `nps_surveys.csv`, `nps_score` va de -16 a 68; se observaron 3 valores negativos.
-- En `support_tickets.csv`, `csat` va de 0 a 7. La escala usada no queda definida por el perfilado; no se consideran errores sin confirmación.
+- En `customers_orgs.csv`, `nps_score` va de -38 a 101; se observaron 16 valores negativos y un valor por encima de 100. Habria que definir si la escala va de -100 a 100 o estandarizar.
+- En `nps_surveys.csv`, `nps_score` va de -16 a 68; se observaron 3 valores negativos. Misma situacion que al anteriior.
+- En `support_tickets.csv`, `csat` va de 0 a 7. La escala usada no queda definida por el perfilado; no se consideran errores sin confirmación pero podemos suponer que es una escala de 0 a 10 en principio.
 - En `billing_monthly.csv`, `subtotal` tiene valores negativos en las tres monedas. No deben eliminarse automáticamente: podrían representar ajustes.
 
 ## 3. Perfil de eventos JSONL
@@ -42,7 +40,7 @@ El campo `timestamp` pudo convertirse en todos los registros. El rango observado
 | `schema_version = 1` | 10.800 | 2025-07-03 00:02 a 2025-07-17 23:56 | No contiene `carbon_kg` ni `genai_tokens`. |
 | `schema_version = 2` | 32.400 | 2025-07-18 00:01 a 2025-08-31 23:58 | Contiene `carbon_kg` en los 32.400 eventos y `genai_tokens` en 3.132. |
 
-El campo `value` representa la medida, `metric` indica qué se midió y `unit` expresa la unidad. El perfilado encontró:
+El campo `value` representa la medida, `metric` indica qué se midió y `unit` expresa la unidad:
 
 | Métrica | Eventos | `value` informado | `value` ausente | `unit` ausente |
 |---|---:|---:|---:|---:|
@@ -52,6 +50,7 @@ El campo `value` representa la medida, `metric` indica qué se midió y `unit` e
 | **Total** | **43.200** | **42.323** | **877** | **2.075** |
 
 `value` aparece como número decimal en 41.014 casos y como texto en 1.309; los valores de texto revisados pudieron convertirse a número. `carbon_kg` también aparece con tipos enteros y decimales, ambos numéricos.
+En el notebook hay mas evidencia sobre aque tipo de servicio le correspondía la falta de unidades, o de valores.
 
 ## 4. Valores extremos y costos
 
@@ -89,12 +88,7 @@ Los campos `org_id` y `resource_id` permiten proponer relaciones entre fuentes c
 
 ## 7. Evidencia y reproducibilidad
 
-- Notebook de exploración: `notebooks/1)_Exploracion_de_datos.ipynb` (ajustar la ruta si se renombra o se guarda en otra carpeta).
-- Evidencias resumidas: `evidence/`.
-
-### Observación sobre la carga de CSV en el notebook
-
-La extracción del ZIP muestra archivos CSV en la raíz y copias bajo `datalake/landing/`. El notebook recorre ambas ubicaciones con `rglob("*.csv")` y almacena cada tabla usando solo el nombre del archivo como clave; una copia puede sobrescribir a la otra en el diccionario. Para que la exploración sea reproducible, conviene seleccionar explícitamente una sola carpeta de origen y volver a ejecutar el perfilado.
+- Notebook de exploración: `evidencia/exploracion_de_datos.ipynb`.
 
 ## 8. Pendientes de validación
 
