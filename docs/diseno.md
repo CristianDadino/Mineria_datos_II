@@ -177,25 +177,29 @@ Se registran metadatos de origen y procesamiento. Para el flujo streaming se pro
 
 # 9. Procesamiento batch de referencia: lógica MapReduce
 
-Ejemplo: preparar el mart mensual de revenue por organización a partir de `billing_monthly.csv`.
+**Objetivo:** calcular la cantidad de tickets por organización y día a partir de `support_tickets.csv`.
 
-- **Map:** leer cada registro y validar los campos necesarios. Transformarlo en una clave `(org_id, mes)` y en valores con los importes de subtotal, créditos e impuestos, junto con la moneda y el tipo de cambio disponible.
-- **Shuffle / agrupamiento:** reunir los registros que tengan la misma organización y mes.
-- **Reduce:** sumar los importes de cada grupo y normalizar a USD según la regla de negocio definida para créditos, impuestos y tipo de cambio.
-- **Salida:** guardar el resultado agregado en Gold, como `revenue_by_org_month`, y prepararlo para su consulta en Cassandra/AstraDB.
-
-### Diagrama del procesamiento batch
+**Clave de agrupamiento:** `(org_id, fecha_de_creación)`  
+**Valor emitido por cada ticket:** `(cantidad_tickets, tickets_críticos)`
 
 ```mermaid
 flowchart LR
-    A["billing_monthly.csv"] --> B["Map: validar y transformar filas"]
-    B --> C["Shuffle: agrupar por org_id y mes"]
-    C --> D["Reduce: agregar importes y normalizar a USD"]
-    D --> E["Gold: revenue_by_org_month en Parquet"]
-    E --> F["Consulta: Cassandra / AstraDB"]
+    A["CSV: InputFormat e InputSplit"] --> B["Map: Mapper emite clave y valores"]
+    B --> C["Combiner opcional: suma local"]
+    C --> D["Partitioner, Shuffle y Sort: agrupa por clave"]
+    D --> E["Reduce: suma valores y genera salida Gold"]
 ```
 
-En una implementación equivalente con PySpark, se usarían transformaciones para validar y preparar los registros, agrupar por `org_id` y mes, y aplicar agregaciones. La regla exacta de cálculo de revenue debe quedar documentada; no se debe asumir cómo combinar subtotal, créditos e impuestos sin validarla.
+### Etapas
+
+1. **InputFormat e InputSplit:** leen el archivo y lo dividen en partes para que puedan procesarse en paralelo.
+2. **Map:** por cada ticket válido, emite la clave `(org_id, fecha_de_creación)` y los valores `(1, 1)` si es crítico o `(1, 0)` si no lo es. Si faltan datos necesarios para formar la clave, el registro se deriva a revisión.
+3. **Combiner —opcional—:** suma localmente los valores de cada clave antes de enviarlos por la red. Reduce el volumen de datos que debe transferirse.
+4. **Partitioner:** asigna cada clave a un reducer. Todos los registros con la misma clave deben llegar al mismo reducer.
+5. **Shuffle y Sort:** transfiere los pares clave-valor, los ordena y reúne los valores de cada clave.
+6. **Reduce:** suma los valores de cada grupo y genera el total de tickets y tickets críticos por organización y día.
+7. **Salida:** escribe el resultado agregado en la zona Gold del Data Lake. Parquet puede ser el formato de salida; la plataforma de almacenamiento físico, como HDFS, debe definirse por separado.
+
 
 # 10. Supuestos, riesgos y mitigaciones
 
