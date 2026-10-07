@@ -100,3 +100,14 @@ flowchart TD
     X -.-> D
     X -.-> F
     X -.-> G
+## Matriz de requisitos y componentes
+
+| Necesidad de análisis | Fuente | Procesamiento | Resultado esperado |
+|---|---|---|---|
+| Analizar costo y consumo diario por organización y servicio | Eventos JSONL de uso | Spark Structured Streaming; limpieza y agregación por fecha, organización y servicio | Datos agregados en Gold, disponibles para consulta |
+| Identificar las organizaciones con mayor costo en los últimos 14 días | Eventos JSONL, campo `cost_usd_increment` | Agregación por organización y ventana temporal; ordenamiento de mayor a menor costo | Ranking Top-N en Gold |
+| Medir tickets críticos y tiempos de resolución de los últimos 30 días | `support_tickets.csv` | Proceso batch con PySpark; cálculo de cantidad de tickets y tiempos entre creación y resolución | Indicadores de soporte en Gold |
+| Calcular ingresos mensuales en USD | `billing_monthly.csv` | Proceso batch; tratamiento de créditos, impuestos y conversión usando el tipo de cambio disponible | Resumen mensual por organización y moneda normalizada |
+| Analizar tokens y costos de GenAI cuando estén informados | Eventos JSONL, campos `genai_tokens` y `cost_usd_increment` | Procesamiento de eventos de la versión de esquema que incluya esos campos; exclusión o identificación de valores ausentes | Consumo de tokens y costo por organización, servicio y período |
+
+Los datos originales se conservan en la zona **Raw/Bronze**. Luego se validan y normalizan en **Silver**, y las métricas listas para responder estas preguntas se guardan en **Gold**. La capa de consulta puede exponerse mediante Cassandra/AstraDB, según la arquitectura propuesta.
