@@ -197,3 +197,42 @@ flowchart LR
 
 En una implementación equivalente con PySpark, se usarían transformaciones para validar y preparar los registros, agrupar por `org_id` y mes, y aplicar agregaciones. La regla exacta de cálculo de revenue debe quedar documentada; no se debe asumir cómo combinar subtotal, créditos e impuestos sin validarla.
 
+# 10. Supuestos, riesgos y mitigaciones
+
+## Supuestos, riesgos y mitigaciones
+
+| Supuesto | Riesgo si no se cumple | Mitigación |
+|---|---|---|
+| Los CSV se cargarán inicialmente mediante procesos batch; su frecuencia futura aún no está confirmada. | La carga podría quedar desactualizada respecto de la necesidad de consultar métricas diarias. | Confirmar la frecuencia con los responsables de las fuentes y dejarla configurable. |
+| Los archivos JSONL fragmentados representan micro-lotes para el diseño inicial. | La forma de llegada en producción podría ser distinta y requerir otros mecanismos de ingesta. | Diseñar el flujo de manera que la fuente pueda reemplazarse y validar el mecanismo con la arquitectura definitiva. |
+| Los campos opcionales y las versiones de esquema de los eventos se podrán identificar. | Un cambio de esquema podría causar errores de lectura o pérdida de campos. | Registrar `schema_version`, validar el esquema y enviar los registros incompatibles a quarantine. |
+| Puede haber duplicados o eventos tardíos en futuras cargas. | Se podrían contar dos veces eventos o asignarlos a períodos incorrectos. | Deduplicar por `event_id`, definir el manejo de eventos tardíos y usar checkpointing e idempotencia. |
+| El dataset proporcionado sirve para diseñar el flujo, aunque no represente el volumen productivo. | El perfilado inicial podría no mostrar problemas de rendimiento o calidad que aparezcan a mayor escala. | Aclarar que la escalabilidad debe validarse en etapas posteriores con volúmenes representativos. |
+| Las reglas de negocio para normalizar facturación a USD se podrán confirmar. | El revenue calculado podría ser incorrecto si se combinan mal subtotal, créditos, impuestos o tipo de cambio. | Validar la fórmula antes de implementarla y documentarla junto con las métricas. Por ejemplo no tener mas de una cotizacion por dia (me paso en mi trabajo) |
+
+### Decisiones pendientes
+
+Confirmar la frecuencia de entrega de cada CSV, el mecanismo definitivo de ingesta de eventos y las reglas de negocio para revenue.
+El almacenamiento físico del Data Lake y las reglas de negocio para revenue, SLA y valores anómalos. 
+
+# 11. Estimación preliminar de esfuerzo y recursos
+
+Estimación inicial para construir el MVP. Los días-persona son aproximados y deberán ajustarse después de validar el alcance y las decisiones pendientes.
+
+| Trabajo | Rol principal | Esfuerzo estimado |
+|---|---|---:|
+| Preparar el entorno y cargar los CSV en Bronze | Ingeniería de datos | 2–3 días-persona |
+| Implementar la ingesta de eventos JSONL con Structured Streaming | Ingeniería de datos / streaming | 3–5 días-persona |
+| Aplicar controles de calidad y preparar Silver y Gold | Ingeniería de datos / análisis | 3–4 días-persona |
+| Modelar las tablas de consulta y preparar consultas CQL | Ingeniería de datos / Cassandra | 2–3 días-persona |
+| Integrar, probar, documentar y preparar la demostración | Equipo completo | 3–4 días-persona |
+| Resolver ajustes e integración entre componentes | Equipo completo | 2–3 días-persona |
+| **Total preliminar** |  | **15–22 días-persona** |
+
+### Recursos necesarios
+
+- Entorno de desarrollo con Python, PySpark y Spark Structured Streaming.
+- Acceso a los archivos CSV y JSONL de muestra.
+- Almacenamiento para el Data Lake en Parquet; la plataforma concreta queda pendiente de definir.
+- Instancia o entorno de Cassandra/AstraDB para el serving.
+- Repositorio Git para código, configuración de ejemplo, documentación y evidencias.
