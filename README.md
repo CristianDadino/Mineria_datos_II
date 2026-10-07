@@ -20,4 +20,4 @@ Los CSV y archivos JSONL se entregan como dataset del proyecto.
 Consultar `docs/perfilado_datos.md` para el inventario, los controles realizados y los hallazgos.
 
 ## Evidencia
-Las salidas de exploración se encuentran en `evidence/`.
+Las salidas de exploración se encuentran en `evidencia/`.
