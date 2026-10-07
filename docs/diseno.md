@@ -17,6 +17,7 @@ los datos originales, permita su procesamiento batch y streaming y prepare
 información analítica para los equipos de FinOps, Soporte y Producto.
 
 ## Usuarios y preguntas de negocio
+Para el diseño nos basaremos en las consultas del punto 7.4 como requisitos objetivo.
 
 | Usuario | Preguntas que necesita responder |
 |---|---|
@@ -100,14 +101,99 @@ flowchart TD
     X -.-> D
     X -.-> F
     X -.-> G
-## Matriz de requisitos y componentes
+```
+
+# 6. Matriz de requisitos y componentes
 
 | Necesidad de análisis | Fuente | Procesamiento | Resultado esperado |
 |---|---|---|---|
-| Analizar costo y consumo diario por organización y servicio | Eventos JSONL de uso | Spark Structured Streaming; limpieza y agregación por fecha, organización y servicio | Datos agregados en Gold, disponibles para consulta |
+| Analizar costo y consumo diario por organización y servicio | Utilizaremos los eventos JSONL, ya que estos conservan los atributos que se piden analizar, ya ademas nos da la pauta de que se necesita que sea de frecuencia diaria. | Spark Structured Streaming; limpieza y agregación por fecha, organización y servicio | Datos agregados en Gold, disponibles para consulta |
 | Identificar las organizaciones con mayor costo en los últimos 14 días | Eventos JSONL, campo `cost_usd_increment` | Agregación por organización y ventana temporal; ordenamiento de mayor a menor costo | Ranking Top-N en Gold |
-| Medir tickets críticos y tiempos de resolución de los últimos 30 días | `support_tickets.csv` | Proceso batch con PySpark; cálculo de cantidad de tickets y tiempos entre creación y resolución | Indicadores de soporte en Gold |
+| Medir tickets críticos y tiempos de resolución de los últimos 30 días | Atributos que se encuentran en `support_tickets.csv` | Proceso batch con PySpark; cálculo de cantidad de tickets y tiempos entre creación y resolución, uso del campo severity para identificar los criticos | Indicadores de soporte en Gold |
 | Calcular ingresos mensuales en USD | `billing_monthly.csv` | Proceso batch; tratamiento de créditos, impuestos y conversión usando el tipo de cambio disponible | Resumen mensual por organización y moneda normalizada |
 | Analizar tokens y costos de GenAI cuando estén informados | Eventos JSONL, campos `genai_tokens` y `cost_usd_increment` | Procesamiento de eventos de la versión de esquema que incluya esos campos; exclusión o identificación de valores ausentes | Consumo de tokens y costo por organización, servicio y período |
 
-Los datos originales se conservan en la zona **Raw/Bronze**. Luego se validan y normalizan en **Silver**, y las métricas listas para responder estas preguntas se guardan en **Gold**. La capa de consulta puede exponerse mediante Cassandra/AstraDB, según la arquitectura propuesta.
+Los datos originales se conservan en la zona **Raw/Bronze**. Luego se validan y normalizan en **Silver**, y las métricas listas para responder estas preguntas se guardan en **Gold**.
+
+# 7. Diseño del Data Lake
+
+| Zona | Contenido y formato | Reglas principales | Retención propuesta |
+|---|---|---|---|
+| Landing / Raw | Archivos originales: CSV y JSONL | Conservarlos sin modificar y registrar fecha de carga y archivo de origen | 12 meses para batch, 6 meses para jsonl; pasar a almacenamiento de archivo después de 60 días. Permite auditar y reprocesar los datos originales |
+| Bronze | Datos cargados y organizados, manteniendo la información de origen. Seria la zona "STAGING". | Agregar metadatos de ingesta y conservar la versión del esquema | 12 meses. Conserva datos preparados para análisis y reprocesamiento |
+| Silver | Datos validados y normalizados en Parquet | Normalizar tipos y fechas; registrar errores y marcar valores sospechosos, sin eliminarlos automáticamente. Hacer controles de registros duplicados para prevenirlos , ejemplo, controles de reproceso de informacion. | 12 meses. |
+| Gold | Métricas y conjuntos preparados para responder las preguntas de análisis | Publicar resultados agregados y documentar sus reglas de cálculo | 24 meses. Permite comparar tendencias mensuales entre períodos |
+
+Los plazos son supuestos iniciales para el diseño y deberán validarse con las necesidades del negocio y sus políticas de retención. La consigna no establece una duración obligatoria.
+
+### Organización y particionamiento
+
+Los archivos originales se organizarán por fuente y fecha de carga. Los eventos procesados se particionarán por fecha del evento, por ejemplo, año, mes y día. En Silver y Gold se propone usar Parquet para facilitar el procesamiento analítico.
+No se propone particionar inicialmente por `org_id` o `resource_id`, porque podrían generar muchas particiones pequeñas. Los costos negativos, nulos y otros valores sospechosos se identificarán para su revisión, sin descartarlos automáticamente.
+Se propone generar procesos de control data quality (procesos DQ) apuntando a la zona Silver, generando reportes de calidad que nos ayuden a prevenir incidencias en los datos.
+Estas reglas podrán correr diaria o mensualmente, según a que tipo de atributos apunten.
+pd: Se relaciona con el punto de calidad que nos pide el proyecto en la segunda parte.
+
+### Promoción entre zonas
+
+Los datos pasan de Raw a Bronze por camino directo. 
+De Bronze a Silver luego de validar su estructura, tipos y fechas. 
+En Silver se normalizan los campos y se registran las anomalías. 
+Gold se genera a partir de datos suficientemente validados para las métricas definidas.
+
+# 8. Flujos de datos
+
+| Etapa | Batch: archivos CSV | Streaming: eventos JSONL |
+|---|---|---|
+| Ingesta | PySpark lee los CSV como un proceso por lotes | Spark Structured Streaming detecta los nuevos archivos JSONL y los procesa en micro-lotes |
+| Procesamiento | PySpark transforma, valida y agrega los datos | Structured Streaming lee el esquema y procesa los eventos; se prevén deduplicación y manejo de eventos tardíos |
+| Data Lake | Parquet para los datos procesados en Bronze, Silver y Gold | Parquet para los datos procesados en Bronze, Silver y Gold |
+| Consulta | Cassandra/AstraDB para exponer métricas preparadas | Cassandra/AstraDB para exponer métricas de uso y costo |
+
+## Flujo batch
+
+Los archivos CSV de organizaciones, usuarios, recursos, facturación, tickets, encuestas y marketing se procesan periódicamente mediante PySpark.
+
+1. Los archivos originales se reciben en Landing/Raw y se conservan sin modificar.
+2. Se cargan en Bronze con metadatos de ingesta, como fecha de carga y nombre del archivo.
+3. En Silver se normalizan tipos y fechas, se aplican controles de calidad y se preparan las relaciones entre entidades cuando las claves lo permiten.
+4. En Gold se calculan métricas de facturación mensual y de soporte.
+5. Los resultados que deban responder consultas frecuentes se publican en Cassandra/AstraDB.
+
+## Flujo streaming
+
+Los eventos de uso JSONL llegan fragmentados en archivos que simulan micro-lotes. Spark Structured Streaming procesa los archivos nuevos a medida que aparecen.
+
+1. Los archivos originales se reciben en Landing/Raw.
+2. Structured Streaming lee los eventos con un esquema definido y registra la versión del esquema.
+3. Los eventos procesados se escriben en Bronze como Parquet.
+4. En Silver se normalizan los datos, se deduplican por `event_id`, se controlan los eventos tardíos y se separan en quarantine los registros que no superen las reglas definidas.
+5. En Gold se agregan métricas de uso, requests y costos por organización, servicio y día. Los tokens GenAI se calculan cuando el esquema y los datos los incluyen.
+6. Las métricas necesarias para las consultas se publican en Cassandra/AstraDB.
+
+### Capacidades transversales
+
+Se registran metadatos de origen y procesamiento. Para el flujo streaming se propone usar checkpointing para recuperar el avance ante una interrupción. Los errores y registros en quarantine deben quedar identificados para su revisión y reproceso.
+
+# 9. Procesamiento batch de referencia: lógica MapReduce
+
+Ejemplo: preparar el mart mensual de revenue por organización a partir de `billing_monthly.csv`.
+
+- **Map:** leer cada registro y validar los campos necesarios. Transformarlo en una clave `(org_id, mes)` y en valores con los importes de subtotal, créditos e impuestos, junto con la moneda y el tipo de cambio disponible.
+- **Shuffle / agrupamiento:** reunir los registros que tengan la misma organización y mes.
+- **Reduce:** sumar los importes de cada grupo y normalizar a USD según la regla de negocio definida para créditos, impuestos y tipo de cambio.
+- **Salida:** guardar el resultado agregado en Gold, como `revenue_by_org_month`, y prepararlo para su consulta en Cassandra/AstraDB.
+
+### Diagrama del procesamiento batch
+
+```mermaid
+flowchart LR
+    A["billing_monthly.csv"] --> B["Map: validar y transformar filas"]
+    B --> C["Shuffle: agrupar por org_id y mes"]
+    C --> D["Reduce: agregar importes y normalizar a USD"]
+    D --> E["Gold: revenue_by_org_month en Parquet"]
+    E --> F["Consulta: Cassandra / AstraDB"]
+```
+
+En una implementación equivalente con PySpark, se usarían transformaciones para validar y preparar los registros, agrupar por `org_id` y mes, y aplicar agregaciones. La regla exacta de cálculo de revenue debe quedar documentada; no se debe asumir cómo combinar subtotal, créditos e impuestos sin validarla.
+
