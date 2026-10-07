@@ -1,11 +1,47 @@
 # Cloud Provider Analytics
 
-## 1. Objetivo
+# 1. Interpretacion del problema
 
+## Problema
+
+El proveedor de servicios cloud recibe información operativa y comercial desde
+fuentes batch y eventos de uso. Estos datos tienen nulos, tipos inconsistentes,
+valores atípicos y cambios de esquema. Se necesita diseñar una solución que los
+organice y prepare para analizar costos, facturación, soporte y uso de servicios.
+
+## Objetivo principal
 Diseñar una solución de datos para analizar costos, consumo y soporte
 de un proveedor de servicios cloud.
+El objetivo del proyecto es proponer un flujo que ingiera esas fuentes, preserve
+los datos originales, permita su procesamiento batch y streaming y prepare
+información analítica para los equipos de FinOps, Soporte y Producto.
 
-## 2. Inventario y perfil inicial de fuentes
+## Usuarios y preguntas de negocio
+
+| Usuario | Preguntas que necesita responder |
+|---|---|
+| FinOps | ¿Cuáles son los costos y requests diarios por organización y servicio? ¿Qué servicios acumularon más costo en los últimos 14 días? ¿Cuál fue el revenue mensual por organización, considerando créditos, impuestos y moneda? |
+| Soporte | ¿Cuántos tickets críticos hubo por organización y día? ¿Qué proporción incumplió el SLA? ¿Cómo varió la satisfacción de los clientes? |
+| Producto / Usage | ¿Qué servicios y organizaciones concentran el uso? Cuando estén disponibles, ¿cuántos tokens GenAI y cuánto carbono se registran por día? |
+
+## Criterios de éxito del diseño
+
+La solución propuesta debe permitir responder las cinco consultas analíticas
+previstas en la consigna: costos y requests diarios; principales servicios por
+costo en 14 días; tickets críticos e incumplimientos de SLA en 30 días; revenue
+mensual normalizado a USD; y tokens GenAI con costo estimado cuando existan.
+
+# 2. Justificación de Big Data: las 5V
+
+| Dimensión | Evidencia en el caso | Implicación para el diseño |
+|---|---|---|
+| Volumen | La muestra incluye 4.112 filas CSV y 43.200 eventos JSONL. Ese volumen sirve para probar el diseño, pero no demuestra por sí solo una necesidad de Big Data. En producción, el supuesto es que los eventos crecerían con la cantidad de organizaciones, recursos y tiempo de retención. | Diseñar el almacenamiento y procesamiento para que puedan escalar. Validar el volumen real con métricas de producción antes de dimensionar recursos. |
+| Velocidad | Los eventos de uso tienen timestamps y están fragmentados en archivos para simular micro-lotes. En cambio, maestros, encuestas y facturación se reciben como archivos batch. | Separar el flujo de eventos del batch y contemplar procesamiento incremental de eventos. |
+| Variedad | Hay CSV estructurados de organizaciones, usuarios, recursos, tickets, encuestas, marketing y facturación, además de eventos JSONL. El esquema de eventos evoluciona y agrega carbon_kg y genai_tokens en la versión 2. | Definir esquemas por fuente y una estrategia para compatibilizar versiones antes de conformar los datos. |
+| Veracidad | Se observan nulos, tipos inconsistentes y valores que requieren validación. En los eventos, value aparece como número o texto; 877 registros no tienen value y 2.075 no tienen unit. También hay costos altos marcados para revisión en analytics. | Incorporar reglas de calidad, trazabilidad y revisión de registros sospechosos, conservando los originales en Landing. |
+| Valor | Las áreas de FinOps, Soporte y Producto necesitan analizar costos, facturación, SLA, satisfacción y uso de servicios, incluidos tokens GenAI y carbono cuando estén disponibles. | Preparar datos analíticos orientados a esas preguntas y a los usuarios que los consultan. |
+
+# 3. Inventario y perfil inicial de fuentes
 
 A continuación se resume la exploración inicial de las fuentes.
 La tabla de la consigna describe qué contiene cada archivo; aquí se
@@ -22,38 +58,45 @@ agregan los resultados observados al revisar los datos.
 | `billing_monthly.csv` | 240 | Una factura por organización y mes / `invoice_id` | Junio–agosto de 2025 | 137 `credits` nulos y 13 `subtotal` negativos. Conviene validar el significado de los negativos. |
 | `usage_events_stream/*.jsonl` | 43.200 | Un evento; `event_id` es candidato a identificador | Incluye `timestamp`; desde 2025-07-03 a 2025-08-31 (corte en 2025-07-17 por cambio de version) | `value` llega como decimal o texto, aunque los textos pudieron convertirse a número; faltan 877 valores `value` y 2.075 `unit`. Encontramos spikes en la mayoria de los services. |
 
-## 3. Problema
+# 4/5. Diagrama + Patrón arquitectónico elegido
 
-El proveedor de servicios cloud recibe información operativa y comercial desde
-fuentes batch y eventos de uso. Estos datos tienen nulos, tipos inconsistentes,
-valores atípicos y cambios de esquema. Se necesita diseñar una solución que los
-organice y prepare para analizar costos, facturación, soporte y uso de servicios.
+Se propone un patrón híbrido. Los archivos CSV de organizaciones, usuarios,
+recursos, tickets, marketing, encuestas y facturación se procesan por batch.
+Los eventos de uso JSONL se procesan mediante Structured Streaming para
+incorporar incrementos a medida que llegan.
 
-El objetivo del proyecto es proponer un flujo que ingiera esas fuentes, preserve
-los datos originales, permita su procesamiento batch y streaming y prepare
-información analítica para los equipos de FinOps, Soporte y Producto.
+Se elige este patrón porque las fuentes tienen ritmos de llegada distintos:
+los datos maestros y de facturación pueden procesarse periódicamente, mientras
+que los eventos requieren un análisis más frecuente. Ambos flujos convergen en
+el Data Lake y se conforman para preparar información de consumo analítico.
 
-## 4. Usuarios y preguntas de negocio
+## Arquitectura de alto nivel
 
-| Usuario | Preguntas que necesita responder |
-|---|---|
-| FinOps | ¿Cuáles son los costos y requests diarios por organización y servicio? ¿Qué servicios acumularon más costo en los últimos 14 días? ¿Cuál fue el revenue mensual por organización, considerando créditos, impuestos y moneda? |
-| Soporte | ¿Cuántos tickets críticos hubo por organización y día? ¿Qué proporción incumplió el SLA? ¿Cómo varió la satisfacción de los clientes? |
-| Producto / Usage | ¿Qué servicios y organizaciones concentran el uso? Cuando estén disponibles, ¿cuántos tokens GenAI y cuánto carbono se registran por día? |
+```mermaid
+flowchart TD
+    A["CSV: maestros, tickets, encuestas y facturación"]
+    B["JSONL: eventos de uso"]
+    L["Landing: archivos originales inmutables"]
+    C["Ingesta batch"]
+    D["Structured Streaming"]
+    E["Bronze: Parquet estandarizado"]
+    F["Silver: datos limpios y conformados"]
+    G["Gold: marts de FinOps, Soporte y Producto"]
+    H["Cassandra / AstraDB"]
+    I["Consultas y visualización"]
+    X["Calidad, metadatos, linaje, seguridad y observabilidad"]
 
-Criterios de éxito del diseño
-
-La solución propuesta debe permitir responder las cinco consultas analíticas
-previstas en la consigna: costos y requests diarios; principales servicios por
-costo en 14 días; tickets críticos e incumplimientos de SLA en 30 días; revenue
-mensual normalizado a USD; y tokens GenAI con costo estimado cuando existan.
-
-## 6. Justificación de Big Data: las 5V
-
-| Dimensión | Evidencia en el caso | Implicación para el diseño |
-|---|---|---|
-| Volumen | La muestra incluye 4.112 filas CSV y 43.200 eventos JSONL. Ese volumen sirve para probar el diseño, pero no demuestra por sí solo una necesidad de Big Data. En producción, el supuesto es que los eventos crecerían con la cantidad de organizaciones, recursos y tiempo de retención. | Diseñar el almacenamiento y procesamiento para que puedan escalar. Validar el volumen real con métricas de producción antes de dimensionar recursos. |
-| Velocidad | Los eventos de uso tienen timestamps y están fragmentados en archivos para simular micro-lotes. En cambio, maestros, encuestas y facturación se reciben como archivos batch. | Separar el flujo de eventos del batch y contemplar procesamiento incremental de eventos. |
-| Variedad | Hay CSV estructurados de organizaciones, usuarios, recursos, tickets, encuestas, marketing y facturación, además de eventos JSONL. El esquema de eventos evoluciona y agrega carbon_kg y genai_tokens en la versión 2. | Definir esquemas por fuente y una estrategia para compatibilizar versiones antes de conformar los datos. |
-| Veracidad | Se observan nulos, tipos inconsistentes y valores que requieren validación. En los eventos, value aparece como número o texto; 877 registros no tienen value y 2.075 no tienen unit. También hay costos altos marcados para revisión en analytics. | Incorporar reglas de calidad, trazabilidad y revisión de registros sospechosos, conservando los originales en Landing. |
-| Valor | Las áreas de FinOps, Soporte y Producto necesitan analizar costos, facturación, SLA, satisfacción y uso de servicios, incluidos tokens GenAI y carbono cuando estén disponibles. | Preparar datos analíticos orientados a esas preguntas y a los usuarios que los consultan. |
+    A --> L
+    B --> L
+    L --> C
+    L --> D
+    C --> E
+    D --> E
+    E --> F
+    F --> G
+    G --> H
+    H --> I
+    X -.-> C
+    X -.-> D
+    X -.-> F
+    X -.-> G
