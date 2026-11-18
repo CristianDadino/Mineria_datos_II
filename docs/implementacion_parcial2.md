@@ -26,8 +26,8 @@ Este documento registra lo que se ejecutó en Google Colab y en AstraDB para la 
 | Gold | 11.050 grupos de organización, fecha y servicio; la suma de `events_count` es 41.162. Se representaron 206 anomalías de costo en Gold. | Ejecutado y validado |
 | Serving Cassandra/AstraDB | Base activa; conexión Colab correcta; keyspace `cloud_provider` confirmado; sentencia de creación condicional de `org_daily_usage_by_service` ejecutada. Aún no se cargaron ni verificaron filas. | Parcial |
 | Consultas CQL y resultados | No ejecutadas todavía. | Pendiente |
-| Analítica o ML | No implementado todavía en esta instancia. | Pendiente / definir alternativa y cierre |
-| Quickstart, notebook E2 y evidencia | El notebook E2 actualizado y capturas de la ejecución aún no están en este ZIP. | Pendiente de incorporar |
+| Analítica o ML | No implementado todavía en esta instancia. | Pendiente |
+| Quickstart, notebook E2 y evidencia | Carga parcial. | Pendiente |
 
 ## Flujo implementado
 
