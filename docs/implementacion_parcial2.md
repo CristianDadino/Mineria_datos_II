@@ -51,7 +51,7 @@ Los archivos de origen se mantienen en Landing/Raw. Bronze registra los datos ti
 
 ## Serving en AstraDB
 
-La tabla se diseñó para el patrón de consulta de uso/costo por organización y período mensual. La partición usa `(org_id, usage_month)` y las filas se ordenan por fecha y servicio.
+La siguiente tabla se diseñó para el patrón de consulta de uso/costo por organización y período mensual. La partición usa `(org_id, usage_month)` y las filas se ordenan por fecha y servicio.
 
 ```sql
 CREATE TABLE IF NOT EXISTS cloud_provider.org_daily_usage_by_service (
@@ -70,32 +70,11 @@ CREATE TABLE IF NOT EXISTS cloud_provider.org_daily_usage_by_service (
 ) WITH CLUSTERING ORDER BY (usage_date DESC, service ASC);
 ```
 
-El comando devolvió `Tabla creada o ya existente.`; aún falta inspeccionar el esquema real y confirmar que coincide con el DDL. La conexión probada desde Colab utiliza el Cassandra Python driver. El token se guarda en Colab Secrets (`ASTRA_TOKEN`) y el SCB permanece como archivo privado de la sesión. Ninguno debe versionarse en GitHub.
+La conexión probada desde Colab utiliza el Cassandra Python driver. El token se guarda en Colab Secrets (`ASTRA_TOKEN`) y el SCB permanece como archivo privado de la sesión
 
 ### Consultas CQL previstas
 
-Cuando la tabla esté cargada, ejecutar y guardar evidencia de estas consultas, reemplazando los valores de ejemplo por una organización y un mes presentes en los datos:
-
-```sql
-SELECT usage_date, service, daily_cost_usd, requests, events_count
-FROM cloud_provider.org_daily_usage_by_service
-WHERE org_id = 'org_ejemplo'
-  AND usage_month = '2025-08'
-  AND usage_date >= '2025-08-01'
-  AND usage_date <= '2025-08-31';
-```
-
-```sql
-SELECT org_name, daily_cost_usd, requests, genai_tokens, carbon_kg,
-       events_count, cost_anomaly_events
-FROM cloud_provider.org_daily_usage_by_service
-WHERE org_id = 'org_ejemplo'
-  AND usage_month = '2025-08'
-  AND usage_date = '2025-08-23'
-  AND service = 'compute';
-```
-
-Las consultas respetan las claves de partición y clustering. Cassandra no se usa como motor de agregación ad hoc: los totales se calculan en Spark antes de publicarse.
+Pendiente.
 
 ## Pendientes para cerrar la entrega
 
