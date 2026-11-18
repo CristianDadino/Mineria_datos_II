@@ -23,7 +23,7 @@ Los CSV y archivos JSONL se entregan como dataset del proyecto y no se incluyen 
 
 ## Evidencias
 
-La carpeta `evidencia/` conserva capturas de la exploración de la primera entrega y evidencia2/ la segunda.
+La carpeta `evidencia/` conserva capturas de la exploración de la primera entrega y `evidencia2/` la segunda.
 
 ## Reproducibilidad
 
