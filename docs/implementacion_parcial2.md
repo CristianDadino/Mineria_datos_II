@@ -1,12 +1,16 @@
-# Implementación y estado — Parcial 2
+# Implementación — Parcial 2
 
-Este documento registra lo que se ejecutó en Google Colab y en AstraDB para la segunda entrega. Distingue los resultados observados de los pasos aún pendientes; no presenta como finalizada la carga en AstraDB.
+Este documento registra lo que se ejecutó en Google Colab y en AstraDB para la segunda entrega. 
+Distingue los resultados observados de los pasos aún pendientes; no presenta como finalizada la carga en AstraDB ya que por cuestiones personales no he podido finalizarlo.
 
-## Resumen ejecutivo
+## Resumen
 
-Se procesaron tres CSV maestros a Bronze, se leyó el conjunto de eventos JSONL mediante Structured Streaming y se generaron Silver, cuarentena y el mart Gold `org_daily_usage_by_service`. AstraDB se creó como base Serverless no vectorial. Desde Colab se validó la conexión usando un token de aplicación y un Secure Connect Bundle almacenados fuera del notebook. El keyspace `cloud_provider` se confirmó y se ejecutó `CREATE TABLE IF NOT EXISTS` para la tabla de serving. La escritura del mart y las consultas CQL siguen pendientes de comprobación.
+• Se procesaron tres CSV maestros a Bronze, se leyó el conjunto de eventos JSONL mediante Structured Streaming y se generaron Silver, cuarentena y el mart Gold `org_daily_usage_by_service`. 
+• AstraDB se creó como base Serverless no vectorial. 
+• Desde Colab se validó la conexión usando un token de aplicación y un Secure Connect Bundle almacenados fuera del notebook. 
 
 ## Matriz de cumplimiento
+
 
 | Componente mínimo | Evidencia/resultado observado | Estado |
 |---|---|---|
@@ -35,7 +39,7 @@ Los archivos de origen se mantienen en Landing/Raw. Bronze registra los datos ti
 
 ## Parámetros y decisiones observadas
 
-- **Watermark:** se usó 60 días en la corrida final para abarcar el rango temporal del dataset reproducido. Con 1 día, el procesamiento de archivos fuera del orden de event-time dejó una salida parcial de 7.811 eventos. El valor de 60 días es una decisión para la reproducción de esta muestra académica, no un requisito fijado por la consigna ni una recomendación productiva. En producción se debería establecer el retraso máximo aceptable con el negocio y medir el costo de estado.
+- **Watermark:** se usó 60 días en la corrida final para abarcar el rango temporal del dataset reproducido. Con 1 día, el procesamiento de archivos fuera del orden de event-time dejó una salida parcial de 7.811 eventos. El valor de 60 días es una decisión que se tomo para poder abarcar todo el rango de registros. En producción se debería establecer el retraso máximo aceptable con el negocio y medir el costo de estado.
 - **Deduplicación:** `event_id` se utilizó como identificador del evento. En la entrada del dataset no se observaron duplicados: 43.200 identificadores distintos para 43.200 eventos. Por eso, en esta muestra no se cuantificó una reducción por deduplicación. La deduplicación queda como protección para reintentos y duplicados futuros.
 - **Anomalías de costo:** los valores menores que -0,01 se conservaron con marca para revisión, no se descartaron automáticamente. Gold representa 206 anomalías; cinco de los 211 eventos marcados no aparecen allí porque también fueron enviados a cuarentena por falta de unidad.
 - **Unidad faltante:** 2.038 eventos tenían `value` presente y `unit` faltante. Se separaron en cuarentena; no se afirmaron como registros limpios de Silver.
@@ -87,7 +91,7 @@ WHERE org_id = 'org_ejemplo'
   AND service = 'compute';
 ```
 
-Las consultas respetan las claves de partición y clustering. Cassandra no se usa aquí como motor de agregación ad hoc: los totales se calculan en Spark antes de publicarse.
+Las consultas respetan las claves de partición y clustering. Cassandra no se usa como motor de agregación ad hoc: los totales se calculan en Spark antes de publicarse.
 
 ## Pendientes para cerrar la entrega
 
