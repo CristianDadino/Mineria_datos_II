@@ -12,7 +12,7 @@ Construir un MVP reproducible para integrar fuentes batch CSV y eventos JSONL, p
 
 ## Estado
 
-
+Falta la carga de datos a AstraDB.
 
 ## Documentación
 
