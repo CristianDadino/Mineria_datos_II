@@ -27,4 +27,4 @@ La carpeta `evidencia/` conserva capturas de la exploración de la primera entre
 
 ## Reproducibilidad
 
-El notebook de implementación de E2 y sus instrucciones de ejecución deben incorporarse antes de considerar cerrado el Quickstart. El estado actual, los parámetros relevantes y las tareas pendientes están detallados en [docs/implementacion_parcial2.md](docs/implementacion_parcial2.md).
+Los parámetros relevantes y las tareas pendientes están detallados en [docs/implementacion_parcial2.md](docs/implementacion_parcial2.md).
