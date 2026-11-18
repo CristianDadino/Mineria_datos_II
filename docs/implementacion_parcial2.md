@@ -78,7 +78,6 @@ Pendiente.
 
 ## Pendientes para cerrar la entrega
 
-- [ ] Volver a iniciar Spark en Colab si la sesión se reinició y confirmar que el directorio Gold continúa disponible.
 - [ ] Leer Gold desde Parquet, agregar `usage_month` y adaptar los nombres/tipos a la tabla CQL.
 - [ ] Cargar el dataframe de Spark a AstraDB y verificar filas de muestra.
 - [ ] Ejecutar las dos consultas CQL mínimas y guardar capturas sin secretos.
