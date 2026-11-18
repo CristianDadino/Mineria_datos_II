@@ -2,9 +2,6 @@
 
 Este documento registra lo que se ejecutó en Google Colab y en AstraDB para la segunda entrega. 
 
-
-`No presenta como finalizada la carga en AstraDB ya que por cuestiones personales no he podido finalizarlo.`
-
 ## Resumen
 
 • Se procesaron tres CSV maestros a Bronze, se leyó el conjunto de eventos JSONL mediante Structured Streaming y se generaron Silver, cuarentena y el mart Gold `org_daily_usage_by_service`. 
@@ -24,8 +21,8 @@ Este documento registra lo que se ejecutó en Google Colab y en AstraDB para la 
 | Silver y enriquecimiento | 41.162 eventos quedaron en Silver después del control de unidad y del join con organizaciones; 2.038 registros fueron enviados a cuarentena. Silver se enriqueció con atributos de organización. | Ejecutado y validado |
 | Calidad | 0 `event_id` nulos; 0 `org_id` sin correspondencia; 211 costos menores que -0,01 marcados como anomalía; 2.038 eventos con `value` presente y `unit` faltante enviados a cuarentena. | Ejecutado y validado |
 | Gold | 11.050 grupos de organización, fecha y servicio; la suma de `events_count` es 41.162. Se representaron 206 anomalías de costo en Gold. | Ejecutado y validado |
-| Serving Cassandra/AstraDB | Base activa; conexión Colab correcta; keyspace `cloud_provider` confirmado; sentencia de creación condicional de `org_daily_usage_by_service` ejecutada. Aún no se cargaron ni verificaron filas. | Parcial |
-| Consultas CQL y resultados | No ejecutadas todavía. | Pendiente |
+| Serving Cassandra/AstraDB | Base activa; conexión Colab correcta; keyspace `cloud_provider` confirmado; sentencia de creación condicional de `org_daily_usage_by_service` ejecutada. Se cargaron y verificaron filas. | Ejecutado y validado |
+| Consultas CQL y resultados | Tabla de serving creada y cargada en AstraDB: 11.050 filas, 0 errores. Conteo validado en 160 particiones.Se ejecutaron dos consultas. La primera devolvió costos y requests diarios de networking para org_kdgigatj durante el 18–31/08/2025. La segunda permitió calcular el top 5 de servicios por costo acumulado para esa organización en el mismo período.  | Completo |
 | Analítica o ML | No implementado todavía en esta instancia. | Pendiente |
 | Quickstart, notebook E2 y evidencia | Carga parcial. | Pendiente |
 
@@ -74,13 +71,26 @@ La conexión probada desde Colab utiliza el Cassandra Python driver. El token se
 
 ### Consultas CQL previstas
 
-Pendiente.
-
+```sql
+# Consulta 1: costos y requests diarios por organización y servicio
+cql1 = f"""
+SELECT usage_date, service, daily_cost_usd, requests
+FROM {tabla}
+WHERE org_id = ? AND usage_month = ?
+  AND usage_date >= ? AND usage_date <= ?
+"""
+```
+```sql
+# Consulta 2: top 5 servicios por costo acumulado para esa organización
+cql2 = f"""
+SELECT service, daily_cost_usd, usage_date
+FROM {tabla}
+WHERE org_id = ? AND usage_month = ?
+  AND usage_date >= ? AND usage_date <= ?
+"""
+```
 ## Pendientes para cerrar la entrega
 
-- [ ] Leer Gold desde Parquet, agregar `usage_month` y adaptar los nombres/tipos a la tabla CQL.
-- [ ] Cargar el dataframe de Spark a AstraDB y verificar filas de muestra.
-- [ ] Ejecutar las dos consultas CQL mínimas y guardar capturas sin secretos.
 - [ ] Probar una re-ejecución de la carga para demostrar idempotencia.
 - [ ] Incorporar el notebook ejecutable E2 al repositorio y documentar las dependencias/orden de ejecución.
 - [ ] Completar la evidencia en `evidencia/parcial2/` y actualizar este estado según los resultados reales.
