@@ -113,14 +113,14 @@ flowchart TD
 | Calcular ingresos mensuales en USD | `billing_monthly.csv` | Proceso batch; tratamiento de créditos, impuestos y conversión usando el tipo de cambio disponible | Resumen mensual por organización y moneda normalizada |
 | Analizar tokens y costos de GenAI cuando estén informados | Eventos JSONL, campos `genai_tokens` y `cost_usd_increment` | Procesamiento de eventos de la versión de esquema que incluya esos campos; exclusión o identificación de valores ausentes | Consumo de tokens y costo por organización, servicio y período |
 
-Los datos originales se conservan en la zona **Raw/Bronze**. Luego se validan y normalizan en **Silver**, y las métricas listas para responder estas preguntas se guardan en **Gold**.
+Los archivos originales (e inmutables) se conservan en Raw. En Bronze se genera una copia estandarizada, agregando metadatos de ingesta. En Silver se validan y normalizan los datos; en Gold se publican las métricas preparadas para responder las preguntas de análisis.
 
 # 7. Diseño del Data Lake
 
 | Zona | Contenido y formato | Reglas principales | Retención propuesta |
 |---|---|---|---|
 | Landing / Raw | Archivos originales: CSV y JSONL | Conservarlos sin modificar y registrar fecha de carga y archivo de origen | 12 meses para batch, 6 meses para jsonl; pasar a almacenamiento de archivo después de 60 días. Permite auditar y reprocesar los datos originales |
-| Bronze | Datos cargados y organizados, manteniendo la información de origen. Seria la zona "STAGING". | Agregar metadatos de ingesta y conservar la versión del esquema | 12 meses. Conserva datos preparados para análisis y reprocesamiento |
+| Bronze | Copia en Parquet, con esquema explícito y el mismo grano de la fuente | Agregar ingest_ts y source_file; conservar schema_version cuando exista y deduplicar cuando corresponda | 12 meses. Datos preparados para validación y reprocesamiento. Conserva datos preparados para análisis y reprocesamiento |
 | Silver | Datos validados y normalizados en Parquet | Normalizar tipos y fechas; registrar errores y marcar valores sospechosos, sin eliminarlos automáticamente. Hacer controles de registros duplicados para prevenirlos , ejemplo, controles de reproceso de informacion. | 12 meses. |
 | Gold | Métricas y conjuntos preparados para responder las preguntas de análisis | Publicar resultados agregados y documentar sus reglas de cálculo | 24 meses. Permite comparar tendencias mensuales entre períodos |
 
@@ -136,7 +136,7 @@ pd: Se relaciona con el punto de calidad que nos pide el proyecto en la segunda 
 
 ### Promoción entre zonas
 
-Los datos pasan de Raw a Bronze por camino directo. 
+Los datos pasan de Landing/Raw a Bronze mediante la ingesta, sin modificar los archivos originales.
 De Bronze a Silver luego de validar su estructura, tipos y fechas. 
 En Silver se normalizan los campos y se registran las anomalías. 
 Gold se genera a partir de datos suficientemente validados para las métricas definidas.
