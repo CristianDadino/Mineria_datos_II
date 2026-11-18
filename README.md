@@ -21,3 +21,10 @@ Consultar `docs/perfilado_datos.md` para el inventario, los controles realizados
 
 ## Evidencia
 Las salidas de exploración se encuentran en `evidencia/`.
+
+Quickstart — exploración de datos
+1. Descargar el ZIP del dataset provisto para el proyecto.
+2. Abrir evidencia/exploracion_de_datos.ipynb en Google Colab.
+3. Ejecutar las celdas en orden y cargar el ZIP cuando el notebook lo solicite.
+4. Revisar las salidas de perfilado: 7 CSV, 4.112 filas CSV y 43.200 eventos JSONL.
+El dataset no está incluido en este repositorio; debe obtenerse desde el material provisto.
