@@ -12,8 +12,13 @@ Construir un MVP reproducible para integrar fuentes batch CSV y eventos JSONL, p
 
 ## Estado
 
+
+
+```diff
 2026/11/18 20:22
+
 Se finalizo con la carga de datos a AStraDB y las consultas CQL posterior a la hora de entrega.
+  ```
 
 ## Documentación
 
