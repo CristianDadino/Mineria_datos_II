@@ -10,6 +10,9 @@ Dadino Cristian
 
 Construir un MVP reproducible para integrar fuentes batch CSV y eventos JSONL, procesarlos con PySpark y publicar métricas de uso y costos para consultas analíticas.
 
+## Estado
+
+
 
 ## Documentación
 
