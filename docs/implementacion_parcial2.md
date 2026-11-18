@@ -6,7 +6,9 @@ Distingue los resultados observados de los pasos aún pendientes; no presenta co
 ## Resumen
 
 • Se procesaron tres CSV maestros a Bronze, se leyó el conjunto de eventos JSONL mediante Structured Streaming y se generaron Silver, cuarentena y el mart Gold `org_daily_usage_by_service`. 
+
 • AstraDB se creó como base Serverless no vectorial. 
+
 • Desde Colab se validó la conexión usando un token de aplicación y un Secure Connect Bundle almacenados fuera del notebook. 
 
 ## Matriz de cumplimiento
