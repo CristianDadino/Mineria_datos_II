@@ -28,3 +28,18 @@ La carpeta `evidencia/` conserva capturas de la exploración de la primera entre
 ## Reproducibilidad
 
 Los parámetros relevantes y las tareas pendientes están detallados en [docs/implementacion_parcial2.md](docs/implementacion_parcial2.md).
+
+## Evidencia
+Las salidas de exploración se encuentran en `evidencia/`.
+
+Quickstart 
+— exploración de datos (correccion parcial 1)
+1. Descargar el ZIP del dataset provisto para el proyecto.
+2. Abrir evidencia/exploracion_de_datos.ipynb en Google Colab.
+3. Ejecutar las celdas en orden y cargar el ZIP cuando el notebook lo solicite.
+4. Revisar las salidas de perfilado: 7 CSV, 4.112 filas CSV y 43.200 eventos JSONL.
+El dataset no está incluido en este repositorio; debe obtenerse desde el material provisto.
+
+Quickstart parcial 2
+El notebook de implementación de E2 y sus instrucciones de ejecución deben incorporarse antes de considerar cerrado el Quickstart. El estado actual, los parámetros relevantes y las tareas pendientes están detallados en [docs/implementacion_parcial2.md](docs/implementacion_parcial2.md).
+
