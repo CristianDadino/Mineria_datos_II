@@ -26,12 +26,6 @@ Los CSV y archivos JSONL se entregan como dataset del proyecto y no se incluyen 
 La carpeta `evidencia/` conserva capturas de la exploración de la primera entrega y `evidencia2/` la segunda.
 
 ## Reproducibilidad
-
-Los parámetros relevantes y las tareas pendientes están detallados en [docs/implementacion_parcial2.md](docs/implementacion_parcial2.md).
-
-## Evidencia
-Las salidas de exploración se encuentran en `evidencia/`.
-
 Quickstart 
 — exploración de datos (correccion parcial 1)
 1. Descargar el ZIP del dataset provisto para el proyecto.
