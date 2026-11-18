@@ -23,7 +23,7 @@ Los CSV y archivos JSONL se entregan como dataset del proyecto y no se incluyen 
 
 ## Evidencias
 
-La carpeta `evidencia/` conserva capturas de la exploración de la primera entrega. Agregar en `evidencia/parcial2/` capturas del notebook ejecutado, los conteos de validación y las consultas CQL cuando la carga en AstraDB quede completa. No incluir tokens, Secure Connect Bundles (SCB), archivos de datos privados ni salidas que expongan credenciales.
+La carpeta `evidencia/` conserva capturas de la exploración de la primera entrega y evidencia2/ la segunda.
 
 ## Reproducibilidad
 
