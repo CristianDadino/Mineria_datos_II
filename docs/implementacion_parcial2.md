@@ -1,7 +1,9 @@
 # Implementación — Parcial 2
 
 Este documento registra lo que se ejecutó en Google Colab y en AstraDB para la segunda entrega. 
-No presenta como finalizada la carga en AstraDB ya que por cuestiones personales no he podido finalizarlo.
+
+
+`No presenta como finalizada la carga en AstraDB ya que por cuestiones personales no he podido finalizarlo.`
 
 ## Resumen
 
