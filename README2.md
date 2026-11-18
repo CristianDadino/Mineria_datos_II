@@ -41,5 +41,6 @@ Quickstart
 El dataset no está incluido en este repositorio; debe obtenerse desde el material provisto.
 
 Quickstart parcial 2
-El notebook de implementación de E2 y sus instrucciones de ejecución deben incorporarse antes de considerar cerrado el Quickstart. El estado actual, los parámetros relevantes y las tareas pendientes están detallados en [docs/implementacion_parcial2.md](docs/implementacion_parcial2.md).
+
+— El notebook de implementación de E2 y sus instrucciones de ejecución deben incorporarse antes de considerar cerrado el Quickstart. El estado actual, los parámetros relevantes y las tareas pendientes están detallados en [docs/implementacion_parcial2.md](docs/implementacion_parcial2.md).
 
